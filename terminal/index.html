@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32Marauder Terminal</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts - Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1b26;
+            --text-color: #a9b1d6;
+            --button-bg: #24283b;
+            --button-hover: #414868;
+            --border-color: #565f89;
+            --prompt-color: #7aa2f7;
+            --suggestion-color: #565f89;
+            --success-color: #9ece6a;
+            --error-color: #f7768e;
+            --warning-color: #e0af68;
+            --info-color: #7dcfff;
+            --timestamp-color: #565f89;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            height: 100vh;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+        }
+
+        .button-section {
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            padding-right: 10px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .button-category {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background-color: var(--button-bg);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .category-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #fff;
+            font-size: 1em;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .btn-custom {
+            background-color: var(--button-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 5px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.9em;
+            transition: all 0.2s;
+            position: relative;
+            text-align: left;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: var(--button-bg);
+            border-radius: 10px;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ff5f57;
+            box-shadow: 0 0 5px rgba(255, 95, 87, 0.5);
+        }
+
+        .status-indicator.connected {
+            background-color: #28a745;
+            box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--button-bg);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--button-hover);
+        }
+
+        /* Modern Terminal Styles */
+        .terminal-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background-color: var(--bg-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .terminal-header {
+            background-color: var(--button-bg);
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .terminal-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot.red { background-color: #ff5f57; }
+        .terminal-dot.yellow { background-color: #febc2e; }
+        .terminal-dot.green { background-color: #28c840; }
+
+        .terminal-title {
+            color: var(--text-color);
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+
+        .terminal-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+
+        #terminalContent {
+            flex: 1;
+            overflow-y: auto;
+            white-space: pre;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            color: var(--text-color);
+            padding: 10px;
+            margin: 0;
+            background-color: rgba(0, 0, 0, 0.2);
+            height: 100%;
+        }
+
+        .terminal-input-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background-color: var(--button-bg);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .terminal-prompt {
+            color: var(--prompt-color);
+            user-select: none;
+            font-family: 'Fira Code', 'Consolas', monospace;
+        }
+
+        .terminal-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 14px;
+            outline: none;
+            caret-color: var(--prompt-color);
+        }
+
+        .terminal-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background-color: var(--prompt-color);
+            animation: blink 1s step-end infinite;
+            margin-left: 2px;
+            vertical-align: middle;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .terminal-output {
+            color: var(--text-color);
+            white-space: pre-wrap;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            display: block;
+            margin: 0;
+            padding: 0;
+            text-align: left;
+            word-wrap: break-word;
+        }
+
+        .terminal-error {
+            color: var(--error-color);
+            white-space: pre-wrap;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            display: block;
+            margin: 0;
+            padding: 0;
+            text-align: left;
+            word-wrap: break-word;
+        }
+
+        .terminal-success {
+            color: var(--success-color);
+            white-space: pre-wrap;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            display: block;
+            margin: 0;
+            padding: 0;
+            text-align: left;
+            word-wrap: break-word;
+        }
+
+        .terminal-warning {
+            color: var(--warning-color);
+            white-space: pre-wrap;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            display: block;
+            margin: 0;
+            padding: 0;
+            text-align: left;
+            word-wrap: break-word;
+        }
+
+        .terminal-info {
+            color: var(--info-color);
+            white-space: pre-wrap;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            display: block;
+            margin: 0;
+            padding: 0;
+            text-align: left;
+            word-wrap: break-word;
+        }
+
+        .terminal-timestamp {
+            color: var(--timestamp-color);
+            font-size: 0.85em;
+            margin-right: 8px;
+            user-select: none;
+        }
+
+        /* Command History Styles */
+        .command-history {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            background-color: var(--button-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+        }
+
+        .history-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .history-item:hover {
+            background-color: var(--button-hover);
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Terminal Controls */
+        .terminal-controls {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+            position: relative;
+        }
+
+        .terminal-control-btn {
+            background-color: var(--button-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .terminal-control-btn:hover {
+            background-color: var(--button-hover);
+            color: #fff;
+        }
+
+        /* Tooltip Styles */
+        [data-tooltip] {
+            position: relative;
+        }
+
+        [data-tooltip]:before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 12px;
+            background-color: var(--button-bg);
+            color: var(--text-color);
+            font-size: 12px;
+            white-space: normal;
+            width: max-content;
+            max-width: 200px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+            z-index: 1000;
+            margin-bottom: 8px;
+            text-align: left;
+            line-height: 1.4;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        [data-tooltip]:hover:before {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        [data-tooltip]:after {
+            content: '';
+            position: absolute;
+            bottom: calc(100% - 4px);
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 4px;
+            border-style: solid;
+            border-color: var(--border-color) transparent transparent transparent;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+        }
+
+        [data-tooltip]:hover:after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Adjust tooltip position for buttons in different sections */
+        .button-section [data-tooltip]:before {
+            left: 0;
+            transform: none;
+        }
+
+        .button-section [data-tooltip]:after {
+            left: 20px;
+            transform: none;
+        }
+
+        .terminal-controls [data-tooltip]:before {
+            right: 0;
+            left: auto;
+            transform: none;
+        }
+
+        .terminal-controls [data-tooltip]:after {
+            right: 20px;
+            left: auto;
+            transform: none;
+        }
+
+        /* Ensure tooltips don't go off screen */
+        .button-section {
+            position: relative;
+        }
+
+        .terminal-controls {
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-bar">
+            <div class="connection-status">
+                <div class="status-indicator" id="connectionStatus"></div>
+                <span id="statusText">Disconnected</span>
+            </div>
+            <div>Baud Rate: 115200</div>
+        </div>
+
+        <div class="main-content">
+            <div class="button-section">
+                <div class="button-category">
+                    <div class="category-title">WiFi Sniffers</div>
+                    <button class="btn btn-custom" onclick="sendCommand('sniffbeacon')" data-tooltip="Capture WiFi beacon frames to discover nearby networks">Beacon Sniff</button>
+                    <button class="btn btn-custom" onclick="sendCommand('sniffdeauth')" data-tooltip="Monitor for deauthentication packets in the air">Deauth Sniff</button>
+                    <button class="btn btn-custom" onclick="sendCommand('sniffpmkid')" data-tooltip="Attempt to capture PMKID hashes from WPA/WPA2 networks">PMKID Scan</button>
+                    <button class="btn btn-custom" onclick="sendCommand('sniffraw')" data-tooltip="Capture all raw WiFi packets in the air">Raw Sniff</button>
+                    <button class="btn btn-custom" onclick="sendCommand('sniffprobe')" data-tooltip="Monitor for probe requests from devices">Probe Sniff</button>
+                    <button class="btn btn-custom" onclick="sendCommand('sniffpwn')" data-tooltip="Capture PWN packets for security analysis">PWN Sniff</button>
+                    <button class="btn btn-custom" onclick="sendCommand('sniffesp')" data-tooltip="Monitor ESP-specific packets">ESP Sniff</button>
+                    <button class="btn btn-custom" onclick="sendCommand('scanap')" data-tooltip="Scan for nearby WiFi access points">Scan APs</button>
+                    <button class="btn btn-custom" onclick="sendCommand('scansta')" data-tooltip="Scan for connected WiFi stations">Scan Stations</button>
+                </div>
+
+                <div class="button-category">
+                    <div class="category-title">WiFi Attacks</div>
+                    <button class="btn btn-custom" onclick="sendCommand('attack -t deauth')" data-tooltip="Send deauthentication packets to disconnect devices">Deauth Attack</button>
+                    <button class="btn btn-custom" onclick="sendCommand('attack -t beacon')" data-tooltip="Create fake WiFi networks to monitor responses">Beacon Spam</button>
+                    <button class="btn btn-custom" onclick="sendCommand('attack -t probe')" data-tooltip="Send probe requests to discover hidden networks">Probe Attack</button>
+                    <button class="btn btn-custom" onclick="sendCommand('attack -t rickroll')" data-tooltip="Create a fake network that redirects to Rick Astley">Rickroll Attack</button>
+                </div>
+
+                <div class="button-category">
+                    <div class="category-title">Lists & Management</div>
+                    <button class="btn btn-custom" onclick="sendCommand('list -s')" data-tooltip="Display list of discovered SSIDs">List SSIDs</button>
+                    <button class="btn btn-custom" onclick="sendCommand('list -a')" data-tooltip="Show all discovered access points">List APs</button>
+                    <button class="btn btn-custom" onclick="sendCommand('list -c')" data-tooltip="Display list of discovered clients">List Clients</button>
+                    <button class="btn btn-custom" onclick="sendCommand('list -t')" data-tooltip="Show all target devices">List Targets</button>
+                    <button class="btn btn-custom" onclick="sendCommand('clearlist -a')" data-tooltip="Clear the access points list">Clear AP List</button>
+                    <button class="btn btn-custom" onclick="sendCommand('clearlist -c')" data-tooltip="Clear the clients list">Clear Client List</button>
+                    <button class="btn btn-custom" onclick="sendCommand('clearlist -s')" data-tooltip="Clear the SSIDs list">Clear SSID List</button>
+                </div>
+
+                <div class="button-category">
+                    <div class="category-title">General</div>
+                    <button class="btn btn-custom" onclick="sendCommand('info')" data-tooltip="Display device information and status">Device Info</button>
+                    <button class="btn btn-custom" onclick="sendCommand('help')" data-tooltip="Show available commands and usage">Help</button>
+                    <button class="btn btn-custom" onclick="clearTerminal()" data-tooltip="Clear the terminal output">Clear Terminal</button>
+                    <button class="btn btn-custom" onclick="sendCommand('stopscan')" data-tooltip="Stop any ongoing scan or attack">Stop Scan</button>
+                    <button class="btn btn-custom" onclick="sendCommand('led -p rainbow')" data-tooltip="Enable rainbow LED effect">Rainbow LED</button>
+                </div>
+            </div>
+
+            <div class="terminal-section">
+                <div class="terminal-header">
+                    <div class="terminal-dots">
+                        <div class="terminal-dot red"></div>
+                        <div class="terminal-dot yellow"></div>
+                        <div class="terminal-dot green"></div>
+                    </div>
+                    <div class="terminal-title">ESP32Marauder Terminal</div>
+                    <div class="terminal-controls">
+                        <button class="terminal-control-btn" onclick="scrollToBottom()" data-tooltip="Scroll to the bottom of the terminal">↓ Bottom</button>
+                        <button class="terminal-control-btn" onclick="clearTerminal()" data-tooltip="Clear all terminal output">Clear</button>
+                    </div>
+                </div>
+                <div class="terminal-body">
+                    <div id="terminalContent"></div>
+                    <div class="terminal-input-container">
+                        <span class="terminal-prompt">➜</span>
+                        <input type="text" class="terminal-input" id="commandInput" 
+                               placeholder="Enter command..." 
+                               onkeypress="handleKeyPress(event)"
+                               oninput="showCommandHistory(this.value)">
+                    </div>
+                    <div class="command-history" id="commandHistory"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let port;
+        let reader;
+        let writer;
+        let keepReading = true;
+        let commandHistory = [];
+        let currentHistoryIndex = -1;
+        let textDecoder;
+
+        const commonCommands = [
+            'sniffbeacon', 'sniffdeauth', 'sniffpmkid', 'sniffraw', 'sniffprobe', 'sniffpwn', 'sniffesp',
+            'scanap', 'scansta', 'attack -t deauth', 'attack -t beacon', 'attack -t probe', 'attack -t rickroll',
+            'sniffbt -t airtag', 'sniffbt -t flipper', 'blespam -t all', 'btwardrive', 'sniffskim',
+            'gpsdata', 'nmea', 'channel', 'settings', 'reboot', 'update -s', 'update -w',
+            'list -s', 'list -a', 'list -c', 'list -t', 'clearlist -a', 'clearlist -c', 'clearlist -s',
+            'info', 'help', 'clear', 'stopscan', 'led -p rainbow'
+        ];
+
+        async function connect() {
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+                
+                textDecoder = new TextDecoder();
+                reader = port.readable.getReader();
+                writer = port.writable.getWriter();
+
+                document.getElementById('connectionStatus').classList.add('connected');
+                document.getElementById('statusText').textContent = 'Connected';
+                
+                keepReading = true;
+                readLoop().catch(error => {
+                    console.error('Read loop error:', error);
+                });
+            } catch (error) {
+                console.error('Error connecting:', error);
+            }
+        }
+
+        async function readLoop() {
+            while (port && keepReading) {
+                try {
+                    const { value, done } = await reader.read();
+                    if (done) {
+                        break;
+                    }
+                    
+                    const text = textDecoder.decode(value, { stream: true });
+                    appendToTerminal(text, 'output');
+                } catch (error) {
+                    console.error('Error reading:', error);
+                    appendToTerminal('Error reading from device: ' + error.message, 'error');
+                    break;
+                }
+            }
+        }
+
+        async function sendCommand(command) {
+            if (!writer) {
+                console.error('Not connected to device');
+                return;
+            }
+
+            try {
+                const encoder = new TextEncoder();
+                await writer.write(encoder.encode(command + '\n'));
+                commandHistory.push(command);
+                currentHistoryIndex = commandHistory.length;
+            } catch (error) {
+                console.error('Error sending command:', error);
+            }
+        }
+
+        // Connect button functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const connectButton = document.createElement('button');
+            connectButton.textContent = 'Connect Device';
+            connectButton.className = 'btn btn-custom';
+            connectButton.onclick = connect;
+            document.querySelector('.status-bar').appendChild(connectButton);
+        });
+
+        function appendToTerminal(text, type = 'output') {
+            const terminal = document.getElementById('terminalContent');
+            if (!terminal) return;
+            
+            terminal.textContent += text;
+            
+            // Limit the content length to 3000 characters
+            if (terminal.textContent.length > 3000) {
+                terminal.textContent = terminal.textContent.slice(terminal.textContent.length - 3000);
+            }
+            
+            // Scroll to bottom
+            scrollToBottom();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                const command = document.getElementById('commandInput').value;
+                if (command.trim()) {
+                    sendCommand(command);
+                    appendToTerminal('➜ ' + command + '\n');
+                    document.getElementById('commandInput').value = '';
+                }
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                navigateHistory('up');
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                navigateHistory('down');
+            }
+        }
+
+        function showCommandHistory(input) {
+            const history = document.getElementById('commandHistory');
+            if (!input.trim()) {
+                history.style.display = 'none';
+                return;
+            }
+
+            const matches = commonCommands.filter(cmd => 
+                cmd.toLowerCase().startsWith(input.toLowerCase())
+            );
+
+            if (matches.length > 0) {
+                history.innerHTML = matches
+                    .map(cmd => `<div class="history-item" onclick="useHistoryItem('${cmd}')">${cmd}</div>`)
+                    .join('');
+                history.style.display = 'block';
+            } else {
+                history.style.display = 'none';
+            }
+        }
+
+        function useHistoryItem(command) {
+            document.getElementById('commandInput').value = command;
+            document.getElementById('commandHistory').style.display = 'none';
+        }
+
+        function clearTerminal() {
+            const terminal = document.getElementById('terminalContent');
+            if (terminal) {
+                terminal.textContent = '';
+            }
+        }
+
+        function scrollToBottom() {
+            const terminal = document.getElementById('terminalContent');
+            if (terminal) {
+                requestAnimationFrame(() => {
+                    terminal.scrollTop = terminal.scrollHeight;
+                });
+            }
+        }
+
+        function navigateHistory(direction) {
+            if (direction === 'up') {
+                if (currentHistoryIndex > 0) {
+                    currentHistoryIndex--;
+                    document.getElementById('commandInput').value = commandHistory[currentHistoryIndex];
+                }
+            } else if (direction === 'down') {
+                if (currentHistoryIndex < commandHistory.length - 1) {
+                    currentHistoryIndex++;
+                    document.getElementById('commandInput').value = commandHistory[currentHistoryIndex];
+                }
+            }
+        }
+
+        // Close command history when clicking outside
+        document.addEventListener('click', (event) => {
+            const history = document.getElementById('commandHistory');
+            const input = document.getElementById('commandInput');
+            if (!input.contains(event.target) && !history.contains(event.target)) {
+                history.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html> 
